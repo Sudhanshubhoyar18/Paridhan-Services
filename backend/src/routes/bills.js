@@ -3,9 +3,7 @@ import crypto from 'crypto';
 import db from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { generateInvoicePDF } from '../utils/invoicePdf.js';
-import { sendInvoiceEmail } from '../config/mailer.js';
 import { formatWhatsAppMessage, buildWhatsAppUrl } from '../utils/whatsapp.js';
-import { generateInvoiceEmailHtml } from '../utils/invoiceEmailTemplate.js';
 
 const router = express.Router();
 
@@ -261,8 +259,14 @@ router.post('/', authenticate, (req, res) => {
       paymentStatus = 'Partial';
     }
 
-    // 5. Handle customer: if customer_id is empty, search or create customer
+    // 5. Handle customer: if customer_id is empty or invalid, search or create customer
     let resolvedCustomerId = customer_id ? parseInt(customer_id, 10) : null;
+    if (resolvedCustomerId) {
+      const existing = db.prepare('SELECT id FROM customers WHERE id = ?').get(resolvedCustomerId);
+      if (!existing) {
+        resolvedCustomerId = null;
+      }
+    }
     if (!resolvedCustomerId && customer_phone) {
       const existingCustomer = db.prepare('SELECT id FROM customers WHERE phone = ?').get(customer_phone.trim());
       if (existingCustomer) {
@@ -550,89 +554,18 @@ router.get('/:id/pdf', authenticate, async (req, res) => {
   }
 });
 
-// GET /api/bills/:id/email-preview - Preview the rendered HTML email before sending
-router.get('/:id/email-preview', authenticate, (req, res) => {
-  const bill = db.prepare('SELECT * FROM bills WHERE id = ?').get(req.params.id);
-  if (!bill) {
-    return res.status(404).json({ success: false, message: 'Bill not found.' });
+// Helper to resolve public base URL for customer links (WhatsApp, PDFs)
+function getPublicBaseUrl(req) {
+  if (req.query.baseUrl && typeof req.query.baseUrl === 'string' && req.query.baseUrl.startsWith('http')) {
+    return req.query.baseUrl.replace(/\/+$/, '');
   }
-
-  const items = db.prepare('SELECT * FROM bill_items WHERE bill_id = ?').all(bill.id);
-  const settings = getSettings();
-  const publicBaseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:5173';
-
-  const html = generateInvoiceEmailHtml({ bill, items, settings, publicBaseUrl });
-  const subject = `Invoice ${bill.invoice_no} from ${settings.business_name || 'Paridhan Uniforms'}`;
-
-  return res.json({
-    success: true,
-    data: {
-      to: bill.customer_email || '',
-      customerName: bill.customer_name,
-      subject,
-      html
-    }
-  });
-});
-
-// POST /api/bills/:id/email - Send invoice via email with PDF attachment & HTML layout
-router.post('/:id/email', authenticate, async (req, res) => {
-  try {
-    const { to, subject, body } = req.body;
-
-    const bill = db.prepare('SELECT * FROM bills WHERE id = ?').get(req.params.id);
-    if (!bill) {
-      return res.status(404).json({ success: false, message: 'Bill not found.' });
-    }
-
-    const targetEmail = to || bill.customer_email;
-    if (!targetEmail) {
-      return res.status(400).json({ success: false, message: 'Recipient email address is required.' });
-    }
-
-    const items = db.prepare('SELECT * FROM bill_items WHERE bill_id = ?').all(bill.id);
-    const settings = getSettings();
-    const publicBaseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:5173';
-
-    // Generate PDF buffer
-    const pdfBuffer = await generateInvoicePDF(bill, items, settings);
-
-    // Generate rich HTML email
-    const emailHtml = generateInvoiceEmailHtml({ bill, items, settings, publicBaseUrl });
-
-    const emailSubject = subject || `Invoice ${bill.invoice_no} from ${settings.business_name || 'Paridhan Uniforms'}`;
-    const emailBody = body || `Dear ${bill.customer_name},\n\nPlease find attached the tax invoice ${bill.invoice_no} for your purchase at Paridhan Uniforms.\n\nTotal Amount: ₹${bill.grand_total}\nPaid: ₹${bill.paid_amount}\nBalance Due: ₹${bill.balance_due}\n\nThank you for choosing Paridhan Uniforms!`;
-
-    const emailResult = await sendInvoiceEmail({
-      to: targetEmail,
-      subject: emailSubject,
-      text: emailBody,
-      html: emailHtml,
-      pdfBuffer,
-      filename: `Invoice-${bill.invoice_no}.pdf`
-    });
-
-    // Mark email_sent in DB
-    db.prepare(`
-      UPDATE bills
-      SET email_sent = 1, email_sent_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(bill.id);
-
-    return res.json({
-      success: true,
-      message: emailResult.message,
-      previewUrl: emailResult.previewUrl || null,
-      simulated: emailResult.simulated
-    });
-  } catch (err) {
-    console.error('Email sending error:', err);
-    return res.status(500).json({
-      success: false,
-      message: `Failed to send email: ${err.message}`
-    });
+  const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    return `${proto}://${host}`;
   }
-});
+  return process.env.PUBLIC_BASE_URL || (host ? `${proto}://${host}` : 'http://localhost:5000');
+}
 
 // GET /api/bills/:id/whatsapp-data - Get WhatsApp click-to-chat data
 router.get('/:id/whatsapp-data', authenticate, (req, res) => {
@@ -648,7 +581,7 @@ router.get('/:id/whatsapp-data', authenticate, (req, res) => {
     ? (settings.whatsapp_reminder_template || '')
     : (settings.whatsapp_invoice_template || '');
 
-  const publicBaseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:5173';
+  const publicBaseUrl = getPublicBaseUrl(req);
   const message = formatWhatsAppMessage(template, bill, items, settings, publicBaseUrl);
   const waUrl = buildWhatsAppUrl(bill.customer_phone, message);
 

@@ -65,9 +65,11 @@ Regards, Paridhan Uniforms`
   }
   console.log('✔ Default settings verified/seeded');
 
-  // 3. Seed Products if empty
-  const productCount = db.prepare('SELECT COUNT(*) as count FROM products').get().count;
-  if (productCount === 0) {
+  // 3. Seed Products (only if explicitly invoked with --with-samples)
+  const shouldSeedSamples = process.argv.includes('--with-samples');
+  if (shouldSeedSamples) {
+    const productCount = db.prepare('SELECT COUNT(*) as count FROM products').get().count;
+    if (productCount === 0) {
     const sampleProducts = [
       {
         name: 'Boys Oxford Regular Shirt',
@@ -310,11 +312,13 @@ Regards, Paridhan Uniforms`
       );
     }
     console.log(`✔ Seeded ${sampleProducts.length} sample uniform products with initial stock movements`);
+    }
   }
 
-  // 4. Seed 3 Sample Customers
-  const customerCount = db.prepare('SELECT COUNT(*) as count FROM customers').get().count;
-  if (customerCount === 0) {
+  // 4. Seed 3 Sample Customers (only if explicitly invoked with --with-samples)
+  if (shouldSeedSamples) {
+    const customerCount = db.prepare('SELECT COUNT(*) as count FROM customers').get().count;
+    if (customerCount === 0) {
     const sampleCustomers = [
       {
         name: 'Rajesh Sharma',
@@ -348,6 +352,7 @@ Regards, Paridhan Uniforms`
       insertCust.run(c.name, c.phone, c.email, c.address, c.school_class);
     }
     console.log(`✔ Seeded ${sampleCustomers.length} sample customers`);
+    }
   }
 }
 

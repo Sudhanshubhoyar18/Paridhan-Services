@@ -328,8 +328,9 @@ export function Inventory() {
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
-                    No products found matching the criteria.
+                  <td colSpan={9} className="py-14 text-center">
+                    <p className="text-sm font-bold text-slate-700">No products found</p>
+                    <p className="text-xs text-slate-400 mt-1">Your inventory is currently empty. Click &quot;+ Add Variant&quot; above to add your first uniform product!</p>
                   </td>
                 </tr>
               ) : (

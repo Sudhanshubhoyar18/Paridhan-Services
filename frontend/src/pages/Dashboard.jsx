@@ -9,7 +9,6 @@ import {
   PlusCircle,
   FileText,
   MessageSquare,
-  Mail,
   Download,
   Eye,
   RefreshCw,
@@ -24,7 +23,6 @@ import { formatINR, formatDate, formatDateTime } from '../utils/formatters';
 import { StatCard } from '../components/Common/StatCard';
 import { PaymentBadge, Badge } from '../components/Common/Badge';
 import { StockAdjustModal } from '../components/Modals/StockAdjustModal';
-import { EmailModal } from '../components/Modals/EmailModal';
 import { WhatsAppModal } from '../components/Modals/WhatsAppModal';
 import { useToast } from '../context/ToastContext';
 
@@ -35,7 +33,6 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
-  const [emailBill, setEmailBill] = useState(null);
   const [whatsAppBill, setWhatsAppBill] = useState(null);
   const { error } = useToast();
 
@@ -410,13 +407,6 @@ export function Dashboard() {
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => setEmailBill(bill)}
-                            title="Send on Email"
-                            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 transition"
-                          >
-                            <Mail className="w-3.5 h-3.5" />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -440,13 +430,6 @@ export function Dashboard() {
         isOpen={!!whatsAppBill}
         onClose={() => setWhatsAppBill(null)}
         bill={whatsAppBill}
-        onSent={fetchDashboard}
-      />
-
-      <EmailModal
-        isOpen={!!emailBill}
-        onClose={() => setEmailBill(null)}
-        bill={emailBill}
         onSent={fetchDashboard}
       />
     </div>

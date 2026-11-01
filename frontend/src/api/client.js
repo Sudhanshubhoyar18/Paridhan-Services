@@ -1,4 +1,15 @@
-const API_BASE = '/api';
+const RAW_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = RAW_BASE ? `${RAW_BASE.replace(/\/+$/, '')}/api` : '/api';
+
+export function getApiUrl(endpoint = '') {
+  if (!endpoint) return '';
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) return endpoint;
+  const clean = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  if (RAW_BASE) {
+    return `${RAW_BASE.replace(/\/+$/, '')}${clean}`;
+  }
+  return clean;
+}
 
 export async function apiRequest(endpoint, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -95,7 +106,9 @@ export const api = {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-  }
+  },
+
+  getUrl: getApiUrl
 };
 
 export default api;

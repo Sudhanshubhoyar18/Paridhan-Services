@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 import { seedDatabase } from './database/seed.js';
@@ -14,6 +15,7 @@ import publicRoutes from './routes/public.js';
 import dashboardRoutes from './routes/dashboard.js';
 import reportRoutes from './routes/reports.js';
 import settingRoutes from './routes/settings.js';
+import systemRoutes from './routes/system.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -32,6 +34,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:5000',
+  process.env.CLIENT_URL,
   process.env.PUBLIC_BASE_URL
 ].filter(Boolean);
 
@@ -58,11 +61,27 @@ app.use((req, res, next) => {
   next();
 });
 
+// Helper to detect LAN IPv4
+function getLocalIp() {
+  try {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          return net.address;
+        }
+      }
+    }
+  } catch (_) {}
+  return 'localhost';
+}
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     app: 'Paridhan Uniforms Billing System',
+    localIp: getLocalIp(),
     timestamp: new Date().toISOString()
   });
 });
@@ -78,6 +97,7 @@ app.use('/api/bills', billRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/system', systemRoutes);
 
 // Serve frontend static build if dist exists (production / single-server mode)
 import fs from 'fs';

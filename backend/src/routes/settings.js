@@ -1,7 +1,6 @@
 import express from 'express';
 import db from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
-import { verifySmtpConnection, sendInvoiceEmail } from '../config/mailer.js';
 
 const router = express.Router();
 
@@ -47,49 +46,6 @@ router.put('/', authenticate, (req, res) => {
     success: true,
     message: 'Settings updated successfully.',
     data: settings
-  });
-});
-
-// POST /api/settings/test-email - Test SMTP configuration
-router.post('/test-email', authenticate, async (req, res) => {
-  const { testRecipient } = req.body;
-
-  const verification = await verifySmtpConnection();
-  if (!verification.connected) {
-    return res.json({
-      success: false,
-      configured: false,
-      message: verification.message
-    });
-  }
-
-  if (testRecipient) {
-    try {
-      await sendInvoiceEmail({
-        to: testRecipient,
-        subject: 'Test Email from Paridhan Uniforms Billing System',
-        text: 'This is a test email confirming that your Nodemailer SMTP configuration is working perfectly!',
-        pdfBuffer: Buffer.from('%PDF-1.4 ... demo buffer'),
-        filename: 'Test.pdf'
-      });
-      return res.json({
-        success: true,
-        configured: true,
-        message: `SMTP test email successfully sent to ${testRecipient}!`
-      });
-    } catch (err) {
-      return res.status(500).json({
-        success: false,
-        configured: true,
-        message: `Failed to deliver test email: ${err.message}`
-      });
-    }
-  }
-
-  return res.json({
-    success: true,
-    configured: true,
-    message: verification.message
   });
 });
 

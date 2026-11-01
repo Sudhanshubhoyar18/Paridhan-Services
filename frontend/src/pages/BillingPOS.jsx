@@ -11,7 +11,6 @@ import {
   Printer,
   Download,
   MessageSquare,
-  Mail,
   RefreshCw,
   Barcode,
   ShoppingBag,
@@ -21,11 +20,12 @@ import {
 import api from '../api/client';
 import { formatINR } from '../utils/formatters';
 import { CustomerModal } from '../components/Modals/CustomerModal';
-import { EmailModal } from '../components/Modals/EmailModal';
 import { WhatsAppModal } from '../components/Modals/WhatsAppModal';
 import { useToast } from '../context/ToastContext';
 
 export function BillingPOS() {
+  const navigate = useNavigate();
+
   // Product Search & Catalog state
   const [productQuery, setProductQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -64,7 +64,6 @@ export function BillingPOS() {
   // Post-sale Success Modal
   const [createdBill, setCreatedBill] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
 
   const { success, error, warning } = useToast();
@@ -353,7 +352,7 @@ export function BillingPOS() {
 
   const handlePrint = () => {
     if (!createdBill) return;
-    window.open(`/api/bills/${createdBill.id}/pdf`, '_blank');
+    window.open(api.getUrl(`/api/bills/${createdBill.id}/pdf`), '_blank');
   };
 
   // Filter catalog items for display (by category and school)
@@ -560,28 +559,43 @@ export function BillingPOS() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-              {filteredCatalog.map(p => (
-                <div
-                  key={p.id}
-                  onClick={() => handleAddToCart(p)}
-                  className="p-2.5 rounded-xl border border-neutral-100 bg-neutral-50/50 hover:bg-neutral-100/70 hover:border-neutral-200 cursor-pointer transition flex flex-col justify-between active:scale-[0.98]"
+            {filteredCatalog.length === 0 ? (
+              <div className="py-8 text-center bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
+                <ShoppingBag className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+                <p className="text-xs font-bold text-neutral-700">Catalog is currently empty</p>
+                <p className="text-[11px] text-neutral-400 mt-0.5">Add uniform items and sizes in Inventory to start billing!</p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/inventory')}
+                  className="mt-3 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs rounded-xl shadow-sm transition"
                 >
-                  <div>
-                    <p className="text-xs font-bold text-neutral-900 line-clamp-1">{p.name}</p>
-                    <p className="text-[10px] text-neutral-400 mt-0.5 font-mono truncate">
-                      {p.school ? `${p.school.split(' ')[0]} • ` : ''}Size {p.size}
-                    </p>
+                  + Add Products in Inventory
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                {filteredCatalog.map(p => (
+                  <div
+                    key={p.id}
+                    onClick={() => handleAddToCart(p)}
+                    className="p-2.5 rounded-xl border border-neutral-100 bg-neutral-50/50 hover:bg-neutral-100/70 hover:border-neutral-200 cursor-pointer transition flex flex-col justify-between active:scale-[0.98]"
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-neutral-900 line-clamp-1">{p.name}</p>
+                      <p className="text-[10px] text-neutral-400 mt-0.5 font-mono truncate">
+                        {p.school ? `${p.school.split(' ')[0]} • ` : ''}Size {p.size}
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs font-bold text-neutral-900">{formatINR(p.selling_price)}</span>
+                      <span className="w-5 h-5 rounded-md bg-neutral-900 text-amber-400 flex items-center justify-center text-xs font-bold shadow-sm">
+                        +
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs font-bold text-neutral-900">{formatINR(p.selling_price)}</span>
-                    <span className="w-5 h-5 rounded-md bg-neutral-900 text-amber-400 flex items-center justify-center text-xs font-bold shadow-sm">
-                      +
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Cart Table with Touch Steppers */}
@@ -913,15 +927,6 @@ export function BillingPOS() {
                 <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
                 <span>WhatsApp</span>
               </button>
-
-              <button
-                type="button"
-                onClick={() => setEmailModalOpen(true)}
-                className="flex items-center justify-center gap-1.5 p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-semibold text-xs transition"
-              >
-                <Mail className="w-3.5 h-3.5 text-blue-600" />
-                <span>Email</span>
-              </button>
             </div>
 
             <div className="mt-5 pt-4 border-t border-neutral-100">
@@ -951,14 +956,6 @@ export function BillingPOS() {
         <WhatsAppModal
           isOpen={whatsAppModalOpen}
           onClose={() => setWhatsAppModalOpen(false)}
-          bill={createdBill}
-        />
-      )}
-
-      {createdBill && (
-        <EmailModal
-          isOpen={emailModalOpen}
-          onClose={() => setEmailModalOpen(false)}
           bill={createdBill}
         />
       )}

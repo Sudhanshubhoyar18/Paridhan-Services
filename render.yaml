@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: paridhan-uniforms
+    runtime: node
+    plan: free
+    buildCommand: npm run setup && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: JWT_SECRET
+        generateValue: true

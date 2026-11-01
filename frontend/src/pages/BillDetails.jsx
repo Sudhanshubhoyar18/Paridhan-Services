@@ -5,7 +5,6 @@ import {
   Printer,
   Download,
   MessageSquare,
-  Mail,
   DollarSign,
   Ban,
   CheckCircle2,
@@ -20,7 +19,6 @@ import api from '../api/client';
 import { formatINR, formatDate, formatDateTime } from '../utils/formatters';
 import { PaymentBadge, Badge } from '../components/Common/Badge';
 import { ConfirmDialog } from '../components/Common/ConfirmDialog';
-import { EmailModal } from '../components/Modals/EmailModal';
 import { WhatsAppModal } from '../components/Modals/WhatsAppModal';
 import { PaymentModal } from '../components/Modals/PaymentModal';
 import { useToast } from '../context/ToastContext';
@@ -31,7 +29,6 @@ export function BillDetails() {
   const [loading, setLoading] = useState(true);
 
   // Modals
-  const [emailModal, setEmailModal] = useState(false);
   const [whatsAppModal, setWhatsAppModal] = useState(false);
   const [paymentModal, setPaymentModal] = useState(false);
   const [cancelDialog, setCancelDialog] = useState(false);
@@ -128,7 +125,7 @@ export function BillDetails() {
 
           {/* Print */}
           <a
-            href={`/api/bills/${bill.id}/pdf`}
+            href={api.getUrl(`/api/bills/${bill.id}/pdf`)}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-sm"
@@ -144,15 +141,6 @@ export function BillDetails() {
           >
             <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
             <span>Send on WhatsApp</span>
-          </button>
-
-          {/* Email */}
-          <button
-            onClick={() => setEmailModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-100 transition shadow-sm"
-          >
-            <Mail className="w-3.5 h-3.5 text-blue-600" />
-            <span>Send on Email</span>
           </button>
 
           {/* Payment */}
@@ -366,13 +354,6 @@ export function BillDetails() {
       </div>
 
       {/* Modals */}
-      <EmailModal
-        isOpen={emailModal}
-        onClose={() => setEmailModal(false)}
-        bill={bill}
-        onSent={fetchBill}
-      />
-
       <WhatsAppModal
         isOpen={whatsAppModal}
         onClose={() => setWhatsAppModal(false)}

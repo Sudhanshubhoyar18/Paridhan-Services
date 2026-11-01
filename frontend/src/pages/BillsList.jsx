@@ -6,7 +6,6 @@ import {
   Download,
   Printer,
   MessageSquare,
-  Mail,
   DollarSign,
   Ban,
   Eye,
@@ -21,7 +20,6 @@ import { formatINR, formatDate, formatDateTime } from '../utils/formatters';
 import { PaymentBadge, Badge } from '../components/Common/Badge';
 import { Pagination } from '../components/Common/Pagination';
 import { ConfirmDialog } from '../components/Common/ConfirmDialog';
-import { EmailModal } from '../components/Modals/EmailModal';
 import { WhatsAppModal } from '../components/Modals/WhatsAppModal';
 import { PaymentModal } from '../components/Modals/PaymentModal';
 import { useToast } from '../context/ToastContext';
@@ -39,7 +37,6 @@ export function BillsList() {
   const [status, setStatus] = useState('');
 
   // Modals state
-  const [selectedBillForEmail, setSelectedBillForEmail] = useState(null);
   const [selectedBillForWhatsApp, setSelectedBillForWhatsApp] = useState(null);
   const [selectedBillForPayment, setSelectedBillForPayment] = useState(null);
   const [cancelDialogBill, setCancelDialogBill] = useState(null);
@@ -113,7 +110,7 @@ export function BillsList() {
             Sales Invoices &amp; Billing History
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Search invoices, stream PDFs, send email/WhatsApp copies, and record payments.
+            Search invoices, stream PDFs, send WhatsApp copies, and record payments.
           </p>
         </div>
 
@@ -300,7 +297,7 @@ export function BillsList() {
                         </span>
                       </td>
 
-                      {/* Communications Flags (WhatsApp & Email sent icons) */}
+                      {/* Communications Flags (WhatsApp sent icon) */}
                       <td className="py-3.5">
                         <div className="flex items-center gap-1.5">
                           <span
@@ -308,12 +305,6 @@ export function BillsList() {
                             className={`p-1 rounded ${bill.whatsapp_sent ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-300'}`}
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
-                          </span>
-                          <span
-                            title={bill.email_sent ? `Email Sent at ${formatDateTime(bill.email_sent_at)}` : 'Email not yet sent'}
-                            className={`p-1 rounded ${bill.email_sent ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-300'}`}
-                          >
-                            <Mail className="w-3.5 h-3.5" />
                           </span>
                         </div>
                       </td>
@@ -341,7 +332,7 @@ export function BillsList() {
 
                           {/* Print in new window */}
                           <a
-                            href={`/api/bills/${bill.id}/pdf`}
+                            href={api.getUrl(`/api/bills/${bill.id}/pdf`)}
                             target="_blank"
                             rel="noreferrer"
                             title="Print Invoice"
@@ -357,15 +348,6 @@ export function BillsList() {
                             className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition"
                           >
                             <MessageSquare className="w-4 h-4" />
-                          </button>
-
-                          {/* Send on Email */}
-                          <button
-                            onClick={() => setSelectedBillForEmail(bill)}
-                            title="Send on Email"
-                            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition"
-                          >
-                            <Mail className="w-4 h-4" />
                           </button>
 
                           {/* Record Payment if partial */}
@@ -405,14 +387,6 @@ export function BillsList() {
           onPageChange={(p) => fetchBills(p)}
         />
       </div>
-
-      {/* Email Modal */}
-      <EmailModal
-        isOpen={!!selectedBillForEmail}
-        onClose={() => setSelectedBillForEmail(null)}
-        bill={selectedBillForEmail}
-        onSent={() => fetchBills(pagination.page)}
-      />
 
       {/* WhatsApp Modal */}
       <WhatsAppModal

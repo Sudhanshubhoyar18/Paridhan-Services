@@ -31,12 +31,38 @@ async function runTests() {
     'Content-Type': 'application/json'
   };
 
-  // Test 3: Check Initial Product Stock
-  console.log('\n3. Inspecting Initial Product Stock for DPS-SH-WHT-30...');
+  // Test 3: Check Initial Product Stock or create isolated QA product
+  console.log('\n3. Inspecting or preparing test product for QA verification...');
+  let testProduct = null;
+  let createdForTest = false;
   const prodRes = await fetch(`${BASE_URL}/api/products?search=DPS-SH-WHT-30`, { headers: authHeaders });
   const prodData = await prodRes.json();
-  const testProduct = prodData.data[0];
-  console.log(`✔ Found Product: "${testProduct.name}" (SKU: ${testProduct.sku})`);
+  if (prodData.data && prodData.data.length > 0) {
+    testProduct = prodData.data[0];
+  } else {
+    // Create an isolated test product for verification
+    const createRes = await fetch(`${BASE_URL}/api/products`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        name: 'QA Test Uniform Shirt',
+        category: 'Topwear',
+        school: 'Delhi Public School',
+        size: '30',
+        color: 'White',
+        sku: 'DPS-SH-WHT-30',
+        purchase_price: 280,
+        selling_price: 450,
+        gst_rate: 5,
+        current_stock: 50,
+        low_stock_threshold: 15
+      })
+    });
+    const createdData = await createRes.json();
+    testProduct = createdData.data;
+    createdForTest = true;
+  }
+  console.log(`✔ Found/Prepared Product: "${testProduct.name}" (SKU: ${testProduct.sku})`);
   console.log(`✔ Initial Stock: ${testProduct.current_stock} units`);
   const initialStock = testProduct.current_stock;
 
@@ -123,27 +149,33 @@ async function runTests() {
   const publicPdfBuffer = await publicPdfRes.arrayBuffer();
   console.log(`✔ Public Share PDF streamed: ${publicPdfBuffer.byteLength} bytes`);
 
-  // Test 8: Verify Email Sending (Graceful simulation/fallback if no SMTP credentials)
-  console.log('\n8. Testing Email Sending with PDF attachment...');
-  const emailRes = await fetch(`${BASE_URL}/api/bills/${bill.id}/email`, {
-    method: 'POST',
-    headers: authHeaders,
-    body: JSON.stringify({
-      to: 'customer@example.com',
-      subject: `Invoice ${bill.invoice_no} from Paridhan Uniforms`,
-      body: 'Thank you for your purchase.'
-    })
-  });
-  const emailData = await emailRes.json();
-  console.log(`✔ Email response:`, emailData.message);
-  if (!emailData.success) {
-    throw new Error(`Email sending failed: ${emailData.message}`);
+  // Test 8: Verify CRM Service & System Support Diagnostics
+  console.log('\n8. Testing CRM & System Support Diagnostics (GET /api/system/diagnostics)...');
+  const diagRes = await fetch(`${BASE_URL}/api/system/diagnostics`, { headers: authHeaders });
+  const diagData = await diagRes.json();
+  if (!diagData.success || !diagData.data) {
+    throw new Error(`Diagnostics endpoint failed: ${diagData.message}`);
+  }
+  console.log(`✔ System Diagnostics Healthy: ${diagData.healthy}`);
+  console.log(`✔ SQLite Integrity Status: ${diagData.data.database.integrityStatus}`);
+  console.log(`✔ DB File Size: ${diagData.data.database.sizeFormatted} (Journal: ${diagData.data.database.journalMode})`);
+  console.log(`✔ Active Invoices: ${diagData.data.counts.billsActive}, Customers: ${diagData.data.counts.customersCount}, Catalog Items: ${diagData.data.counts.productsCount}`);
+  if (diagData.data.database.integrityStatus !== 'ok') {
+    throw new Error(`SQLite integrity check returned: ${diagData.data.database.integrityStatus}`);
   }
 
-  // Verify email_sent flag in bill details
-  const updatedBillRes = await fetch(`${BASE_URL}/api/bills/${bill.id}`, { headers: authHeaders });
-  const updatedBillData = await updatedBillRes.json();
-  console.log(`✔ Bill email_sent flag: ${updatedBillData.data.email_sent} (Sent at: ${updatedBillData.data.email_sent_at})`);
+  // Test 8b: Verify SQLite Atomic Backup Generation & Integrity
+  console.log('\n8b. Testing SQLite Atomic Backup (GET /api/system/backup)...');
+  const backupRes = await fetch(`${BASE_URL}/api/system/backup`, { headers: authHeaders });
+  if (backupRes.status !== 200) {
+    throw new Error(`Backup failed with status ${backupRes.status}`);
+  }
+  const backupBuf = await backupRes.arrayBuffer();
+  const sqliteHeader = Buffer.from(backupBuf.slice(0, 16)).toString('utf8');
+  if (!sqliteHeader.startsWith('SQLite format 3')) {
+    throw new Error(`Invalid SQLite backup header: ${sqliteHeader}`);
+  }
+  console.log(`✔ Atomic WAL-checkpointed backup verified: Size=${backupBuf.byteLength} bytes, Valid SQLite Header.`);
 
   // Test 9: Verify WhatsApp wa.me Link Generation
   console.log('\n9. Testing WhatsApp wa.me Link Generation...');
@@ -157,6 +189,21 @@ async function runTests() {
   if (!waData.data.message.includes('Paridhan Uniforms') || !waData.data.message.includes(bill.invoice_no)) {
     throw new Error(`WhatsApp message template missing invoice details`);
   }
+
+  // Verify dynamic tunnel domain resolution
+  const waTunnelRes = await fetch(`${BASE_URL}/api/bills/${bill.id}/whatsapp-data`, {
+    headers: {
+      ...authHeaders,
+      'x-forwarded-proto': 'https',
+      'x-forwarded-host': 'paridhan-demo.trycloudflare.com'
+    }
+  });
+  const waTunnelData = await waTunnelRes.json();
+  if (!waTunnelData.data.message.includes('https://paridhan-demo.trycloudflare.com/invoice/')) {
+    throw new Error(`WhatsApp link did not resolve dynamic tunnel host: ${waTunnelData.data.message}`);
+  }
+  console.log(`✔ Dynamic Cloudflare HTTPS link verified in WhatsApp message:`);
+  console.log(`   ${waTunnelData.data.message.split('Invoice PDF: ')[1]?.trim() || ''}`);
 
   // Mark whatsapp sent
   const waSentRes = await fetch(`${BASE_URL}/api/bills/${bill.id}/whatsapp-sent`, {
@@ -183,57 +230,26 @@ async function runTests() {
   }
   console.log('✔ Stock restored successfully upon cancellation!');
 
-  // Create an active bill for dashboard / UI showcase
-  console.log('\n11. Creating active permanent bill for live showcase...');
-  const liveBillRes = await fetch(`${BASE_URL}/api/bills`, {
-    method: 'POST',
-    headers: authHeaders,
-    body: JSON.stringify({
-      customer_id: 2,
-      customer_name: 'Meenakshi Verma',
-      customer_phone: '+91 99223 45678',
-      customer_email: 'meenakshi.verma@example.com',
-      customer_school_class: "St. Xavier's High - Class 9B",
-      items: [
-        {
-          product_id: 3, // Girls Peter Pan Collar Shirt
-          product_name: "Girls Peter Pan Collar Shirt",
-          category: 'Topwear',
-          school: "St. Xavier's High School",
-          size: '32',
-          color: 'Sky Blue',
-          sku: 'STX-SH-SKY-32',
-          quantity: 2,
-          unit_price: 490,
-          discount: 20,
-          gst_rate: 5
-        },
-        {
-          product_id: 6, // Pleated Uniform Skirt
-          product_name: "Pleated Uniform Skirt",
-          category: 'Bottomwear',
-          school: "St. Xavier's High School",
-          size: '30',
-          color: 'Navy Blue',
-          sku: 'STX-SK-NVY-30',
-          quantity: 2,
-          unit_price: 600,
-          discount: 0,
-          gst_rate: 5
-        }
-      ],
-      discount_type: 'flat',
-      discount_val: 50,
-      paid_amount: 1500,
-      payment_mode: 'Card',
-      payment_reference: 'CARD-AUTH-8821',
-      notes: 'Winter set with alteration request for skirt waist'
-    })
-  });
-  const liveBillData = await liveBillRes.json();
-  console.log(`✔ Permanent Showcase Invoice Created: ${liveBillData.data.invoice_no} (Total: ₹${liveBillData.data.grand_total}, Paid: ₹${liveBillData.data.paid_amount}, Balance: ₹${liveBillData.data.balance_due})`);
+  // Test 11: Invoices List & Customer Ledger Verification
+  console.log('\n11. Verifying Invoices List, Status Filters & Customer Ledger...');
+  const billsListRes = await fetch(`${BASE_URL}/api/bills?status=cancelled`, { headers: authHeaders });
+  const billsListData = await billsListRes.json();
+  if (!billsListData.success || !Array.isArray(billsListData.data)) {
+    throw new Error('Failed to retrieve bills list');
+  }
+  console.log(`✔ Invoices List Filter Verified: Retrieved ${billsListData.data.length} cancelled bill(s).`);
 
-  console.log('\n=== ALL 11 INTEGRATION TESTS PASSED SUCCESSFULLY! ===\n');
+  // If a temporary test product was created specifically for QA, clean it up cleanly
+  if (createdForTest && testProduct?.id) {
+    console.log('\n[*] Cleaning up QA test product to preserve clean database...');
+    await fetch(`${BASE_URL}/api/products/${testProduct.id}`, {
+      method: 'DELETE',
+      headers: authHeaders
+    });
+    console.log('✔ QA test product safely removed. Database remains clean.');
+  }
+
+  console.log('\n=== ALL INTEGRATION TESTS PASSED SUCCESSFULLY! ===\n');
 }
 
 runTests().catch(err => {
