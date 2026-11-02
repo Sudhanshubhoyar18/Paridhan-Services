@@ -13,6 +13,9 @@
     "clean-data": "npm --prefix backend run clean-data",
     "test": "node backend/test_suite.js"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "keywords": [
     "billing",
     "inventory",

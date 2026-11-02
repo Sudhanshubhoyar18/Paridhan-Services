@@ -10,6 +10,9 @@
     "seed": "node src/database/seed.js",
     "clean-data": "node clean_data.js"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
