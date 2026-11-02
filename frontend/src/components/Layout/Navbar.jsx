@@ -14,18 +14,31 @@ export function Navbar({ onMenuClick }) {
   const [lanIp, setLanIp] = useState('192.168.0.111');
   const [connectionMode, setConnectionMode] = useState('tunnel'); // Defaults to 'tunnel' for instant mobile access
   const [tunnelUrl, setTunnelUrl] = useState('');
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstallable, setIsInstallable] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(typeof window !== 'undefined' ? window.deferredInstallPrompt : null);
+  const [isInstallable, setIsInstallable] = useState(typeof window !== 'undefined' && !!window.deferredInstallPrompt);
 
   // Capture PWA install prompt for 1-click phone download
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.deferredInstallPrompt) {
+      setDeferredPrompt(window.deferredInstallPrompt);
+      setIsInstallable(true);
+    }
+    const handleInstallable = () => {
+      setDeferredPrompt(window.deferredInstallPrompt);
+      setIsInstallable(true);
+    };
     const handleBeforeInstall = (e) => {
       e.preventDefault();
+      window.deferredInstallPrompt = e;
       setDeferredPrompt(e);
       setIsInstallable(true);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('pwa-installable', handleInstallable);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('pwa-installable', handleInstallable);
+    };
   }, []);
 
   // Fetch actual LAN IP and active Tunnel URL dynamically from backend

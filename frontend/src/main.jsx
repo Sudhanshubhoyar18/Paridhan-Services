@@ -11,7 +11,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
 // Register PWA service worker
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
+  const registerSW = () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+  };
+  if (document.readyState === 'complete') {
+    registerSW();
+  } else {
+    window.addEventListener('load', registerSW);
+  }
 }

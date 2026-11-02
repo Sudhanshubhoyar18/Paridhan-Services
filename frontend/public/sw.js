@@ -1,5 +1,5 @@
-// Paridhan Uniforms - PWA Service Worker
-const CACHE_NAME = 'paridhan-shell-v1';
+// Paridhan Uniforms - Resilient PWA Service Worker
+const CACHE_NAME = 'paridhan-shell-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -12,7 +12,16 @@ const STATIC_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      // Use cache.addAll with individual catch so 1 missing asset doesn't fail installation
+      return Promise.all(
+        STATIC_ASSETS.map((asset) => {
+          return cache.add(asset).catch((err) => {
+            console.warn(`[SW] Could not cache initial asset ${asset}:`, err.message);
+          });
+        })
+      );
+    })
   );
   self.skipWaiting();
 });
@@ -35,13 +44,12 @@ self.addEventListener('fetch', (event) => {
 
   // STRICT RULE: Never cache authenticated API endpoints or invoice PDFs
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/invoice/')) {
-    // Pass straight to network
     event.respondWith(
       fetch(event.request).catch(() => {
         return new Response(
           JSON.stringify({
             success: false,
-            message: 'Paridhan Store Server is currently offline or unreachable.'
+            message: 'Store Server is temporarily reconnecting or unreachable.'
           }),
           {
             status: 503,
@@ -58,16 +66,33 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first strategy for static assets
+  // For HTML navigation requests (page loads & refreshes)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/index.html')))
+    );
+    return;
+  }
+
+  // For static assets (JS chunks, CSS, fonts, images)
+  // Network first with cache fallback, but NEVER return index.html for a JS/CSS chunk!
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        if (response && response.status === 200 && response.type === 'basic') {
-          const resClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+        if (response && response.status === 200) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/index.html')))
+      .catch(() => caches.match(event.request))
   );
 });

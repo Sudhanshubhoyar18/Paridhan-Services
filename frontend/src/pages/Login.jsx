@@ -8,20 +8,33 @@ export function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstallable, setIsInstallable] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(typeof window !== 'undefined' ? window.deferredInstallPrompt : null);
+  const [isInstallable, setIsInstallable] = useState(typeof window !== 'undefined' && !!window.deferredInstallPrompt);
   const { login } = useAuth();
   const { success, error } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.deferredInstallPrompt) {
+      setDeferredPrompt(window.deferredInstallPrompt);
+      setIsInstallable(true);
+    }
+    const handleInstallable = () => {
+      setDeferredPrompt(window.deferredInstallPrompt);
+      setIsInstallable(true);
+    };
     const handleBeforeInstall = (e) => {
       e.preventDefault();
+      window.deferredInstallPrompt = e;
       setDeferredPrompt(e);
       setIsInstallable(true);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('pwa-installable', handleInstallable);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('pwa-installable', handleInstallable);
+    };
   }, []);
 
   const handleInstallClick = async () => {
