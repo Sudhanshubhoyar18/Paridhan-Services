@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import os from 'os';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 import { seedDatabase } from './database/seed.js';
@@ -76,14 +77,48 @@ function getLocalIp() {
   return 'localhost';
 }
 
+const TUNNEL_FILE = path.resolve(__dirname, '../data/tunnel.json');
+let memoryTunnelUrl = null;
+
+export function getTunnelUrl() {
+  if (memoryTunnelUrl) return memoryTunnelUrl;
+  try {
+    if (fs.existsSync(TUNNEL_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TUNNEL_FILE, 'utf8'));
+      if (data && data.url) return data.url;
+    }
+  } catch (_) {}
+  return null;
+}
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     app: 'Paridhan Uniforms Billing System',
     localIp: getLocalIp(),
+    tunnelUrl: getTunnelUrl(),
     timestamp: new Date().toISOString()
   });
+});
+
+// Direct tunnel-url endpoints for frontend auto-discovery
+app.get('/api/system/tunnel-url', (req, res) => {
+  res.json({ success: true, tunnelUrl: getTunnelUrl() });
+});
+
+app.post('/api/system/tunnel-url', (req, res) => {
+  const { url } = req.body;
+  if (url && typeof url === 'string') {
+    memoryTunnelUrl = url.trim();
+    try {
+      const dataDir = path.dirname(TUNNEL_FILE);
+      if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+      fs.writeFileSync(TUNNEL_FILE, JSON.stringify({ url: memoryTunnelUrl, updatedAt: new Date().toISOString() }), 'utf8');
+    } catch (_) {}
+    return res.json({ success: true, tunnelUrl: memoryTunnelUrl });
+  }
+  return res.status(400).json({ success: false, message: 'Invalid URL' });
 });
 
 // Public invoice routes (without auth)
@@ -100,7 +135,6 @@ app.use('/api/settings', settingRoutes);
 app.use('/api/system', systemRoutes);
 
 // Serve frontend static build if dist exists (production / single-server mode)
-import fs from 'fs';
 const frontendDist = path.resolve(__dirname, '../../frontend/dist');
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));

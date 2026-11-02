@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, ArrowRight, ShieldCheck, Sparkles, Loader2, Store } from 'lucide-react';
+import { Lock, User, ArrowRight, ShieldCheck, Sparkles, Loader2, Store, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -8,9 +8,32 @@ export function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
   const { login } = useAuth();
   const { success, error } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+      success('Paridhan POS is being installed on your device!');
+    }
+    setDeferredPrompt(null);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,6 +146,23 @@ export function Login() {
             <span>Click to fill: admin / admin123</span>
           </button>
         </div>
+
+        {/* 1-Click Install App on Phone Button */}
+        {isInstallable && (
+          <div className="mt-5 pt-4 border-t border-slate-800 text-center">
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20 transition"
+            >
+              <Download className="w-4 h-4 text-slate-950" />
+              <span>Download &amp; Install App on Phone</span>
+            </button>
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              Installs Paridhan POS to your home screen with no app store needed!
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Footer Branding */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, PlusCircle, LogOut, Smartphone, QrCode, X, Copy, Check, ExternalLink, Globe, Wifi } from 'lucide-react';
+import { Menu, PlusCircle, LogOut, Smartphone, QrCode, X, Copy, Check, ExternalLink, Globe, Wifi, Download, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -12,16 +12,33 @@ export function Navbar({ onMenuClick }) {
   const [mobileModal, setMobileModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lanIp, setLanIp] = useState('192.168.0.111');
-  const [connectionMode, setConnectionMode] = useState('wifi'); // 'wifi' | 'tunnel'
+  const [connectionMode, setConnectionMode] = useState('tunnel'); // Defaults to 'tunnel' for instant mobile access
   const [tunnelUrl, setTunnelUrl] = useState('');
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
 
-  // Fetch actual LAN IP dynamically from backend
+  // Capture PWA install prompt for 1-click phone download
+  useEffect(() => {
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  // Fetch actual LAN IP and active Tunnel URL dynamically from backend
   useEffect(() => {
     fetch('/api/health')
       .then(res => res.json())
       .then(d => {
         if (d && d.localIp && d.localIp !== 'localhost') {
           setLanIp(d.localIp);
+        }
+        if (d && d.tunnelUrl) {
+          setTunnelUrl(d.tunnelUrl);
+          setConnectionMode('tunnel');
         }
       })
       .catch(() => {});
@@ -37,7 +54,7 @@ export function Navbar({ onMenuClick }) {
 
   const activeMobileUrl = connectionMode === 'tunnel' && tunnelUrl.trim()
     ? (tunnelUrl.trim().startsWith('http') ? tunnelUrl.trim() : `https://${tunnelUrl.trim()}`)
-    : wifiUrl;
+    : (typeof window !== 'undefined' && window.location.protocol === 'https:' ? window.location.origin : wifiUrl);
 
   const handleLogout = async () => {
     await logout();
@@ -50,6 +67,20 @@ export function Navbar({ onMenuClick }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     success('Mobile URL copied to clipboard!');
+  };
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      setMobileModal(true);
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+      success('Paridhan POS is being installed on your device!');
+    }
+    setDeferredPrompt(null);
   };
 
   return (
@@ -78,6 +109,19 @@ export function Navbar({ onMenuClick }) {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* 1-Click Install App Button (Visible on mobile Chrome) */}
+          {isInstallable && (
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-sm transition animate-pulse"
+              title="Download and Install Paridhan App on Phone"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-950" />
+              <span>Install App</span>
+            </button>
+          )}
+
           {/* Mobile Deploy / Connect Phone Button */}
           <button
             type="button"
@@ -117,20 +161,10 @@ export function Navbar({ onMenuClick }) {
       </header>
 
       {/* Mobile Connection Modal with QR Code */}
-      <Modal isOpen={mobileModal} onClose={() => setMobileModal(false)} title="Open & Install on Phone" maxWidth="max-w-md">
+      <Modal isOpen={mobileModal} onClose={() => setMobileModal(false)} title="Open & Download on Phone" maxWidth="max-w-md">
         <div className="space-y-4 text-center">
           {/* Mode Switch Tabs */}
           <div className="flex p-1 bg-neutral-100 rounded-xl gap-1 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setConnectionMode('wifi')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition ${
-                connectionMode === 'wifi' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-800'
-              }`}
-            >
-              <Wifi className="w-3.5 h-3.5 text-amber-500" />
-              <span>Same Wi-Fi</span>
-            </button>
             <button
               type="button"
               onClick={() => setConnectionMode('tunnel')}
@@ -139,9 +173,47 @@ export function Navbar({ onMenuClick }) {
               }`}
             >
               <Globe className="w-3.5 h-3.5 text-blue-500" />
-              <span>Worldwide Tunnel (4G/5G)</span>
+              <span>Worldwide Tunnel (4G/5G/Wi-Fi)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setConnectionMode('wifi')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition ${
+                connectionMode === 'wifi' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-800'
+              }`}
+            >
+              <Wifi className="w-3.5 h-3.5 text-amber-500" />
+              <span>Local Wi-Fi</span>
             </button>
           </div>
+
+          {/* Active Status Badge */}
+          {connectionMode === 'tunnel' && tunnelUrl ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span>Cloudflare HTTPS Active &bull; Ready to Install</span>
+            </div>
+          ) : connectionMode === 'tunnel' ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-full text-[11px] font-semibold">
+              <span>Start Cloudflare Tunnel to activate phone access</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[11px] font-semibold">
+              <span>Requires phone on same Wi-Fi subnet</span>
+            </div>
+          )}
+
+          {/* Direct 1-Click Install Button if user is currently viewing on mobile browser */}
+          {isInstallable && (
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4 text-slate-950" />
+              <span>Download &amp; Install Paridhan App on This Phone</span>
+            </button>
+          )}
 
           {/* QR Code */}
           <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200/80 inline-block mx-auto shadow-sm">
@@ -154,13 +226,13 @@ export function Navbar({ onMenuClick }) {
 
           <div>
             <p className="text-xs font-bold text-neutral-800">Scan with your phone's camera</p>
-            {connectionMode === 'wifi' ? (
+            {connectionMode === 'tunnel' ? (
               <p className="text-[11px] text-neutral-500 mt-0.5">
-                Ensure phone is on the same Wi-Fi router as this PC.
+                Opens instantly on Android or iPhone from ANYWHERE in the world (4G, 5G, Wi-Fi)!
               </p>
             ) : (
               <p className="text-[11px] text-neutral-500 mt-0.5">
-                Works on ANY mobile phone, 4G, 5G, or any Wi-Fi in the world!
+                Ensure phone is on the same Wi-Fi router as this PC.
               </p>
             )}
           </div>
@@ -179,9 +251,16 @@ export function Navbar({ onMenuClick }) {
             </div>
           ) : (
             <div className="space-y-1.5 text-left">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
-                Paste Tunnel URL from <code>start-tunnel.bat</code>:
-              </label>
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                  Active Cloudflare Tunnel URL:
+                </label>
+                {tunnelUrl && (
+                  <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" /> Auto-detected
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={tunnelUrl}
@@ -206,10 +285,11 @@ export function Navbar({ onMenuClick }) {
 
           {/* PWA Add to Home Screen Instructions */}
           <div className="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl text-left text-[11px] text-neutral-700 space-y-1">
-            <p className="font-bold text-neutral-900">Install as Phone App (PWA):</p>
-            <p>• <strong>iPhone / Safari:</strong> Tap the <em>Share icon</em> &rarr; tap <strong>"Add to Home Screen"</strong>.</p>
-            <p>• <strong>Android / Chrome:</strong> Tap the <em>three dots menu</em> &rarr; tap <strong>"Install App"</strong> or <strong>"Add to Home screen"</strong>.</p>
-            <p className="text-neutral-500 mt-1">The app will launch full-screen with a native launcher icon.</p>
+            <p className="font-bold text-neutral-900">How to Download on Your Phone:</p>
+            <p>1. Scan the QR code above with your phone camera.</p>
+            <p>2. <strong>Android (Chrome):</strong> Tap the <strong>"Install App"</strong> button, or tap <strong>3 dots menu &rarr; "Install app" / "Add to Home screen"</strong>.</p>
+            <p>3. <strong>iPhone (Safari):</strong> Tap the <strong>Share icon (square with arrow) &rarr; "Add to Home Screen"</strong>.</p>
+            <p className="text-neutral-500 mt-1 font-medium">The Paridhan icon will appear directly on your home screen and run standalone like a regular phone app!</p>
           </div>
         </div>
       </Modal>

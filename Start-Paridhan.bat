@@ -78,7 +78,7 @@ echo Close this window or run Stop-Paridhan.bat to shut down.
 echo =======================================================================
 echo.
 
-npx cloudflared tunnel --url http://localhost:5000
+node backend/tunnel.js
 
 :: Cleanup on exit
 echo.

@@ -58,6 +58,7 @@ export function Settings() {
   // Copy URL state & Dynamic LAN IP
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [settingsLanIp, setSettingsLanIp] = useState('192.168.0.111');
+  const [settingsTunnelUrl, setSettingsTunnelUrl] = useState('');
 
   useEffect(() => {
     fetch('/api/health')
@@ -65,6 +66,9 @@ export function Settings() {
       .then(d => {
         if (d && d.localIp && d.localIp !== 'localhost') {
           setSettingsLanIp(d.localIp);
+        }
+        if (d && d.tunnelUrl) {
+          setSettingsTunnelUrl(d.tunnelUrl);
         }
       })
       .catch(() => {});
@@ -75,6 +79,7 @@ export function Settings() {
   const mobileWifiUrl = isLocalHost
     ? `http://${settingsLanIp}:${currentSettingsPort}`
     : (typeof window !== 'undefined' ? window.location.origin : `http://${settingsLanIp}:5000`);
+  const activeDeployUrl = settingsTunnelUrl || (typeof window !== 'undefined' && window.location.protocol === 'https:' ? window.location.origin : mobileWifiUrl);
 
   // Security / Password state
   const [passwordForm, setPasswordForm] = useState({
@@ -243,10 +248,10 @@ export function Settings() {
   };
 
   const handleCopyMobileUrl = () => {
-    navigator.clipboard.writeText(mobileWifiUrl);
+    navigator.clipboard.writeText(activeDeployUrl);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
-    success('Mobile Wi-Fi URL copied!');
+    success('Mobile URL copied!');
   };
 
   if (loading) {
@@ -731,16 +736,20 @@ export function Settings() {
           {/* Wi-Fi Direct Connection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center p-4 rounded-2xl bg-neutral-50 border border-neutral-200">
             <div className="space-y-3">
-              <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
-                Live on Wi-Fi Network
+              <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                settingsTunnelUrl ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {settingsTunnelUrl ? '🟢 Cloudflare Tunnel Active (Worldwide Access)' : 'Local Wi-Fi Mode'}
               </span>
               <h4 className="text-base font-bold text-neutral-900">Instant Phone Access</h4>
               <p className="text-xs text-neutral-600 leading-relaxed">
-                Your computer is hosting the Paridhan Uniforms system on your local Wi-Fi. Any phone or tablet connected to this Wi-Fi can immediately open:
+                {settingsTunnelUrl
+                  ? 'Your Cloudflare encrypted tunnel is active! You can open and install the app on ANY mobile phone, 4G, 5G, or Wi-Fi:'
+                  : 'Open this link or point your phone camera at the QR code to open the billing counter:'}
               </p>
 
               <div className="p-2.5 bg-white rounded-xl border border-neutral-200 flex items-center justify-between text-xs font-mono font-bold text-neutral-900">
-                <span className="select-all truncate mr-2">{mobileWifiUrl}</span>
+                <span className="select-all truncate mr-2">{activeDeployUrl}</span>
                 <button
                   type="button"
                   onClick={handleCopyMobileUrl}
@@ -752,16 +761,16 @@ export function Settings() {
               </div>
 
               <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200/70 text-[11px] text-neutral-700 space-y-1">
-                <p className="font-bold text-neutral-900">Add to Phone Home Screen (PWA):</p>
+                <p className="font-bold text-neutral-900">How to Download on Your Phone (PWA):</p>
+                <p>• <strong>Android (Chrome):</strong> Tap the <strong>"Install App"</strong> button or tap <em>3 dots</em> &rarr; <strong>"Install app"</strong> / <strong>"Add to Home screen"</strong>.</p>
                 <p>• <strong>iPhone / iPad (Safari):</strong> Tap the <em>Share icon</em> (square with arrow) &rarr; tap <strong>"Add to Home Screen"</strong>.</p>
-                <p>• <strong>Android (Chrome):</strong> Tap the <em>3 dots</em> &rarr; tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.</p>
               </div>
             </div>
 
             {/* QR Code Container */}
             <div className="text-center p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm">
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(mobileWifiUrl)}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(activeDeployUrl)}`}
                 alt="Scan to open on phone"
                 className="w-40 h-40 rounded-xl mx-auto shadow-sm"
               />

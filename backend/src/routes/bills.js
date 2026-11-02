@@ -564,6 +564,14 @@ function getPublicBaseUrl(req) {
   if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
     return `${proto}://${host}`;
   }
+  // If billing from local desktop counter, check if active Cloudflare tunnel exists
+  try {
+    const tunnelFile = path.resolve(__dirname, '../../data/tunnel.json');
+    if (fs.existsSync(tunnelFile)) {
+      const data = JSON.parse(fs.readFileSync(tunnelFile, 'utf8'));
+      if (data && data.url) return data.url;
+    }
+  } catch (_) {}
   return process.env.PUBLIC_BASE_URL || (host ? `${proto}://${host}` : 'http://localhost:5000');
 }
 
