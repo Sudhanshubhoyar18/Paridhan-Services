@@ -559,6 +559,9 @@ function getPublicBaseUrl(req) {
   if (req.query.baseUrl && typeof req.query.baseUrl === 'string' && req.query.baseUrl.startsWith('http')) {
     return req.query.baseUrl.replace(/\/+$/, '');
   }
+  if (process.env.RENDER_EXTERNAL_URL) {
+    return process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, '');
+  }
   const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {

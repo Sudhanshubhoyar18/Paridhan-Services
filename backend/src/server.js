@@ -81,6 +81,10 @@ const TUNNEL_FILE = path.resolve(__dirname, '../data/tunnel.json');
 let memoryTunnelUrl = null;
 
 export function getTunnelUrl() {
+  // If deployed on Render cloud, auto-use Render's public URL
+  if (process.env.RENDER_EXTERNAL_URL) {
+    return process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, '');
+  }
   if (memoryTunnelUrl) return memoryTunnelUrl;
   try {
     if (fs.existsSync(TUNNEL_FILE)) {

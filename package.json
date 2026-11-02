@@ -14,7 +14,8 @@
     "start": "node backend/src/server.js",
     "prod": "npm run build && npm start",
     "clean-data": "npm --prefix backend run clean-data",
-    "test": "node backend/test_suite.js"
+    "test": "node backend/test_suite.js",
+    "postinstall": "npm --prefix backend install && npm --prefix frontend install --include=dev"
   },
   "keywords": [
     "billing",
