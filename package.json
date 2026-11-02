@@ -2,19 +2,19 @@
   "name": "paridhan-uniforms-billing-inventory",
   "version": "1.0.0",
   "description": "Production-ready Billing + Inventory Web App for Paridhan Uniforms",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
-    "setup": "npm --prefix backend install && npm --prefix frontend install && npm run seed",
-    "seed": "npm --prefix backend run seed",
+    "setup": "npm --prefix backend install && npm --prefix frontend install --include=dev && npm run build && npm run seed",
+    "seed": "node backend/src/database/seed.js",
     "server": "npm --prefix backend run dev",
     "client": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
-    "start": "npm --prefix backend start",
+    "build": "npm --prefix backend install && npm --prefix frontend install --include=dev && npm --prefix frontend run build",
+    "start": "node backend/src/server.js",
     "prod": "npm run build && npm start",
     "clean-data": "npm --prefix backend run clean-data",
     "test": "node backend/test_suite.js"
-  },
-  "engines": {
-    "node": ">=22.0.0"
   },
   "keywords": [
     "billing",
