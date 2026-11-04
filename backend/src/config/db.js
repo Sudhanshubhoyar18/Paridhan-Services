@@ -6,8 +6,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Data directory (configurable via DATA_DIR for cloud persistent disks)
-const dataDir = process.env.DATA_DIR || path.resolve(__dirname, '../../data');
+// Data directory: in Netlify serverless functions, the root filesystem is read-only, so /tmp is used.
+// On Render, local machines, or Docker, local data folder or DATA_DIR is used.
+const defaultDataDir = process.env.NETLIFY ? '/tmp' : path.resolve(__dirname, '../../data');
+const dataDir = process.env.DATA_DIR || defaultDataDir;
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }

@@ -562,6 +562,9 @@ function getPublicBaseUrl(req) {
   if (process.env.RENDER_EXTERNAL_URL) {
     return process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, '');
   }
+  if (process.env.URL) {
+    return process.env.URL.replace(/\/+$/, '');
+  }
   const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
@@ -574,7 +577,7 @@ function getPublicBaseUrl(req) {
       const data = JSON.parse(fs.readFileSync(tunnelFile, 'utf8'));
       if (data && data.url) return data.url;
     }
-  } catch (_) {}
+  } catch (_) { }
   return process.env.PUBLIC_BASE_URL || (host ? `${proto}://${host}` : 'http://localhost:5000');
 }
 

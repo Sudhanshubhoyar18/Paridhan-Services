@@ -1,1 +1,3 @@
-/*    /index.html   200
+/api/*      /.netlify/functions/api  200!
+/invoice/*  /.netlify/functions/api  200!
+/*          /index.html              200

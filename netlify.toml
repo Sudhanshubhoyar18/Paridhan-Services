@@ -1,16 +1,32 @@
-# Netlify Configuration for Paridhan Uniforms Frontend
-
 [build]
-  base = "frontend"
-  publish = "dist"
   command = "npm run build"
+  publish = "frontend/dist"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
+  NETLIFY = "true"
 
-# SPA Fallback for client-side routing (React Router)
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["node:sqlite"]
+
+# Forward all API requests to the Netlify Serverless function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+# Forward invoice customer links to the Netlify Serverless function
+[[redirects]]
+  from = "/invoice/*"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+# SPA client-side routing fallback to frontend index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  
