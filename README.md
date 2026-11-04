@@ -1,8 +1,9 @@
 # Paridhan Uniforms - Billing & Inventory Management System
 
-[![Node.js](https://img.shields.io/badge/Node.js-v18+-green.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-v22+-green.svg)](https://nodejs.org/)
+[![Render](https://img.shields.io/badge/Render-Deployed%20Live-00C7B7.svg)](https://render.com/)
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://react.dev/)
-[![SQLite](https://img.shields.io/badge/SQLite-WAL--Mode-lightblue.svg)](https://sqlite.org/)
+[![SQLite](https://img.shields.io/badge/SQLite-Native%20Node%20Engine-lightblue.svg)](https://nodejs.org/api/sqlite.html)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-CSS-38bdf8.svg)](https://tailwindcss.com/)
 [![License: ISC](https://img.shields.io/badge/License-ISC-amber.svg)](https://opensource.org/licenses/ISC)
 
@@ -263,18 +264,28 @@ This gives you an instant, secure public HTTPS URL (e.g. `https://....trycloudfl
 
 ---
 
-## ☁️ Cloud Deployment (Render / Railway)
+## ☁️ 24/7 Cloud Deployment on Render (₹0 Free Tier)
 
-1. Push this repository to GitHub: `https://github.com/Sudhanshubhoyar18/Paridhan-Services.git`
-2. Create a **New Web Service** on [Render.com](https://render.com) or [Railway.app](https://railway.app).
-3. Connect your GitHub repository.
-4. Deployment settings:
-   - **Build Command:** `npm run setup && npm run build`
+This application is fully optimized for **Render Web Services**:
+
+1. **Repository:** `https://github.com/Sudhanshubhoyar18/Paridhan-Services.git`
+2. **Render Blueprint Support:** Automatically configured via [`render.yaml`](render.yaml).
+3. **Manual Web Service Configuration:**
+   - **Environment / Runtime:** `Node`
+   - **Region:** `Singapore` (recommended for India)
+   - **Branch:** `main`
+   - **Build Command:** `npm run build`
    - **Start Command:** `npm start`
-   - **Environment Variables:**
-     - `NODE_ENV`: `production`
-     - `PORT`: `5000`
-     - `JWT_SECRET`: `your_random_jwt_secret_key`
+   - **Instance Type:** `Free ($0/month)`
+4. **Required Environment Variables:**
+   - `NODE_VERSION`: `22` *(Required for native `node:sqlite` engine)*
+   - `NODE_ENV`: `production`
+   - `JWT_SECRET`: `paridhan_secret_key_cloud_2026` *(or any strong random string)*
+5. **Key Cloud Features:**
+   - **Continuous 24/7 Availability:** Runs independently of your computer — website and phone app stay online even when the store laptop is turned off.
+   - **Dynamic Port Binding:** Automatically detects Render's `$PORT` on `0.0.0.0`.
+   - **Render External URL Auto-Detection:** Customer WhatsApp invoice links dynamically use your live Render domain (`RENDER_EXTERNAL_URL`).
+   - **Resilient SQLite Fallback:** WAL mode with graceful DELETE journal fallback for cloud container stability.
 
 ---
 
