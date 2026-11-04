@@ -28,7 +28,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Initialize and seed database if necessary
-seedDatabase();
+try {
+  seedDatabase();
+  console.log('✅ Database schema verified & seeded successfully');
+} catch (seedErr) {
+  console.error('⚠️ Database seed error:', seedErr);
+}
 
 // CORS configuration
 const allowedOrigins = [

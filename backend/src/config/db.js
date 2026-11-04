@@ -6,18 +6,31 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Data directory
-const dataDir = path.resolve(__dirname, '../../data');
+// Data directory (configurable via DATA_DIR for cloud persistent disks)
+const dataDir = process.env.DATA_DIR || path.resolve(__dirname, '../../data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
 const dbPath = path.join(dataDir, 'paridhan.db');
+console.log(`📁 SQLite Database path: ${dbPath}`);
 const rawDb = new DatabaseSync(dbPath);
 
-// Enable WAL mode & foreign keys for high performance and integrity
-rawDb.exec('PRAGMA foreign_keys = ON;');
-rawDb.exec('PRAGMA journal_mode = WAL;');
+// Enable WAL mode & foreign keys with safe fallback
+try {
+  rawDb.exec('PRAGMA foreign_keys = ON;');
+} catch (fkErr) {
+  console.warn('⚠️ Foreign keys pragma warning:', fkErr.message);
+}
+
+try {
+  rawDb.exec('PRAGMA journal_mode = WAL;');
+} catch (walErr) {
+  console.warn('⚠️ WAL mode failed, falling back to DELETE mode:', walErr.message);
+  try {
+    rawDb.exec('PRAGMA journal_mode = DELETE;');
+  } catch (_) {}
+}
 
 function normalizeArgs(args) {
   if (args.length === 1 && Array.isArray(args[0])) {
