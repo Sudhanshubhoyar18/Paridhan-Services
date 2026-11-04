@@ -86,12 +86,9 @@ const TUNNEL_FILE = path.resolve(__dirname, '../data/tunnel.json');
 let memoryTunnelUrl = null;
 
 export function getTunnelUrl() {
-  // If deployed on Render or Netlify, auto-use external public URL
+  // If deployed on Render cloud, auto-use Render's public URL
   if (process.env.RENDER_EXTERNAL_URL) {
     return process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, '');
-  }
-  if (process.env.URL) {
-    return process.env.URL.replace(/\/+$/, '');
   }
   if (memoryTunnelUrl) return memoryTunnelUrl;
   try {
@@ -161,11 +158,14 @@ if (fs.existsSync(frontendDist)) {
 // Centralized error handler
 app.use(errorHandler);
 
-// Start server on 0.0.0.0 for local network & mobile access (bypassed on Netlify serverless)
-if (!process.env.NETLIFY && process.env.NODE_ENV !== 'test') {
+// Start server on 0.0.0.0 for local network, mobile access & Render cloud
+if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Paridhan Uniforms Backend running on http://localhost:${PORT} and network http://0.0.0.0:${PORT}`);
-    console.log(`📑 Public invoice share configured with base: ${process.env.PUBLIC_BASE_URL || 'http://localhost:5173'}`);
+    console.log(`🚀 Paridhan Uniforms Backend running on port ${PORT} (0.0.0.0:${PORT})`);
+    if (process.env.RENDER_EXTERNAL_URL) {
+      console.log(`🌐 Live Render URL: ${process.env.RENDER_EXTERNAL_URL}`);
+    }
+    console.log(`📑 Invoice base URL: ${process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}`);
   });
 }
 

@@ -29,8 +29,5 @@
     "whatsapp"
   ],
   "author": "Antigravity Senior Full-Stack Engineer",
-  "license": "ISC",
-  "dependencies": {
-    "serverless-http": "^4.0.0"
-  }
+  "license": "ISC"
 }
