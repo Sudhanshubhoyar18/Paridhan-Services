@@ -30,9 +30,16 @@ router.put('/', authenticate, (req, res) => {
 
   const saveTxn = db.transaction(() => {
     for (const [k, v] of Object.entries(newSettings)) {
+      if (k === 'apply_to_all_products') continue;
       if (typeof v === 'string' || typeof v === 'number') {
         updateStmt.run(k, String(v));
       }
+    }
+
+    // If requested or if default_gst_rate is set to 0% (Exempt), sync all products in inventory
+    if (newSettings.default_gst_rate !== undefined && (newSettings.apply_to_all_products || String(newSettings.default_gst_rate) === '0')) {
+      const targetGst = parseFloat(newSettings.default_gst_rate) || 0;
+      db.prepare('UPDATE products SET gst_rate = ?').run(targetGst);
     }
   });
 

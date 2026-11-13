@@ -45,6 +45,7 @@ export function Settings() {
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [applyToAllProducts, setApplyToAllProducts] = useState(true);
 
   // CRM & System Diagnostics state
   const [diagnostics, setDiagnostics] = useState(null);
@@ -119,10 +120,16 @@ export function Settings() {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await api.put('/settings', settings);
+      const payload = {
+        ...settings,
+        apply_to_all_products: applyToAllProducts
+      };
+      const res = await api.put('/settings', payload);
       if (res.success) {
         setSettings(prev => ({ ...prev, ...res.data }));
-        success('Settings saved successfully!');
+        success(applyToAllProducts 
+          ? `Settings saved! Products updated to ${settings.default_gst_rate}% GST.` 
+          : 'Settings saved successfully!');
       }
     } catch (err) {
       error(err.message || 'Failed to save settings.');
@@ -431,12 +438,34 @@ export function Settings() {
                 onChange={handleSettingsChange}
                 className="w-full px-3 py-2 text-xs sm:text-sm border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none bg-white font-medium"
               >
-                <option value="0">0% (Exempt)</option>
+                <option value="0">0% (Exempt / No Tax)</option>
                 <option value="5">5% (Uniform Apparel &lt; ₹1000)</option>
                 <option value="12">12% (Uniform Apparel &gt; ₹1000)</option>
                 <option value="18">18% (Accessories / Other)</option>
               </select>
             </div>
+          </div>
+
+          {/* Sync existing products & explanation badge */}
+          <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-neutral-800">
+              <input
+                type="checkbox"
+                checked={applyToAllProducts}
+                onChange={(e) => setApplyToAllProducts(e.target.checked)}
+                className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+              />
+              <span>Apply this GST rate ({settings.default_gst_rate}%) to all existing products in inventory</span>
+            </label>
+            {settings.default_gst_rate === '0' ? (
+              <p className="text-[11px] text-emerald-700 font-medium">
+                ✅ <strong>0% GST Exempt Active:</strong> No tax is added at billing. Selling price is the final amount the customer pays (e.g. ₹650 sweater = ₹650 bill).
+              </p>
+            ) : (
+              <p className="text-[11px] text-neutral-600">
+                ℹ️ Standard GST of {settings.default_gst_rate}% will be added to the selling price on invoices.
+              </p>
+            )}
           </div>
 
           <div>

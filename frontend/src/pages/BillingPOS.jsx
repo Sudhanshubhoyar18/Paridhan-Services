@@ -66,20 +66,32 @@ export function BillingPOS() {
   const [submitting, setSubmitting] = useState(false);
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
 
+  // Store Settings (Default GST, Invoice Prefix)
+  const [storeSettings, setStoreSettings] = useState({
+    default_gst_rate: '0',
+    invoice_prefix: 'PU'
+  });
+
   const { success, error, warning } = useToast();
   const searchInputRef = useRef(null);
 
-  // Fetch initial products for the 1-click catalog grid
+  // Fetch initial products and store settings
   useEffect(() => {
-    const loadCatalog = async () => {
+    const loadCatalogAndSettings = async () => {
       try {
-        const res = await api.get('/products', { limit: 50 });
-        if (res.success) {
-          setCatalogItems(res.data);
+        const [prodRes, setRes] = await Promise.all([
+          api.get('/products', { limit: 50 }),
+          api.get('/settings').catch(() => null)
+        ]);
+        if (prodRes && prodRes.success) {
+          setCatalogItems(prodRes.data);
+        }
+        if (setRes && setRes.success && setRes.data) {
+          setStoreSettings(setRes.data);
         }
       } catch (_) {}
     };
-    loadCatalog();
+    loadCatalogAndSettings();
   }, []);
 
   // Search Products when query changes
@@ -159,6 +171,18 @@ export function BillingPOS() {
         return updated;
       }
 
+      // Determine applicable GST rate
+      const storeDefaultGst = storeSettings?.default_gst_rate !== undefined ? parseFloat(storeSettings.default_gst_rate) : 0;
+      let itemGstRate = 0;
+      if (!isNaN(storeDefaultGst) && storeDefaultGst === 0) {
+        // Store is configured as 0% GST (Exempt)
+        itemGstRate = 0;
+      } else if (product.gst_rate !== undefined && product.gst_rate !== null && !isNaN(parseFloat(product.gst_rate))) {
+        itemGstRate = parseFloat(product.gst_rate);
+      } else if (!isNaN(storeDefaultGst)) {
+        itemGstRate = storeDefaultGst;
+      }
+
       return [
         ...prev,
         {
@@ -172,7 +196,7 @@ export function BillingPOS() {
           quantity: 1,
           unit_price: product.selling_price,
           discount: 0,
-          gst_rate: product.gst_rate || 5,
+          gst_rate: itemGstRate,
           max_stock: product.current_stock
         }
       ];
@@ -751,10 +775,17 @@ export function BillingPOS() {
                 <span>{formatINR(taxableAmount)}</span>
               </div>
 
-              <div className="flex justify-between text-neutral-500 text-[11px]">
-                <span>CGST + SGST:</span>
-                <span>{formatINR(effectiveTotalTax)}</span>
-              </div>
+              {effectiveTotalTax > 0 ? (
+                <div className="flex justify-between text-neutral-500 text-[11px]">
+                  <span>CGST + SGST:</span>
+                  <span>{formatINR(effectiveTotalTax)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-emerald-600 text-[11px] font-medium">
+                  <span>GST:</span>
+                  <span>0% (Exempt)</span>
+                </div>
+              )}
 
               <div className="flex justify-between text-neutral-400 text-[11px]">
                 <span>Round-off:</span>

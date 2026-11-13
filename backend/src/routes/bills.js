@@ -184,6 +184,7 @@ router.post('/', authenticate, (req, res) => {
     const publicToken = crypto.randomBytes(16).toString('hex');
 
     // 3. Calculate line items, GST split, and subtotal
+    const storeDefaultGst = settings.default_gst_rate !== undefined ? parseFloat(settings.default_gst_rate) : 5;
     let subtotal = 0;
     let totalTax = 0;
     let cgstTotal = 0;
@@ -193,7 +194,16 @@ router.post('/', authenticate, (req, res) => {
       const qty = parseInt(item.quantity, 10);
       const unitPrice = parseFloat(item.unit_price) || 0;
       const itemDiscount = parseFloat(item.discount) || 0;
-      const gstRate = parseFloat(item.gst_rate) || 0;
+      
+      // If store default GST is 0% (Exempt), force 0% GST on all bill items
+      let gstRate = 0;
+      if (!isNaN(storeDefaultGst) && storeDefaultGst === 0) {
+        gstRate = 0;
+      } else if (item.gst_rate !== undefined && item.gst_rate !== null && !isNaN(parseFloat(item.gst_rate))) {
+        gstRate = parseFloat(item.gst_rate);
+      } else {
+        gstRate = !isNaN(storeDefaultGst) ? storeDefaultGst : 0;
+      }
 
       // Line total before GST: (rate * qty) - discount
       const lineSubtotal = Math.max(0, (unitPrice * qty) - itemDiscount);

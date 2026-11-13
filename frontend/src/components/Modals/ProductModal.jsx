@@ -14,14 +14,30 @@ export function ProductModal({ isOpen, onClose, product, onSaved, existingCatego
     sku: '',
     purchase_price: '',
     selling_price: '',
-    gst_rate: '5',
+    gst_rate: '0',
     current_stock: '20',
     low_stock_threshold: '10'
   });
+  const [defaultStoreGst, setDefaultStoreGst] = useState('0');
   const [loading, setLoading] = useState(false);
   const { success, error } = useToast();
 
   const isEdit = !!product?.id;
+
+  // Load store default GST setting when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/settings').then(res => {
+        if (res && res.success && res.data && res.data.default_gst_rate !== undefined) {
+          const storeGst = String(res.data.default_gst_rate);
+          setDefaultStoreGst(storeGst);
+          if (!product?.id) {
+            setFormData(prev => ({ ...prev, gst_rate: storeGst }));
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen, product]);
 
   useEffect(() => {
     if (product && isOpen) {
@@ -34,7 +50,7 @@ export function ProductModal({ isOpen, onClose, product, onSaved, existingCatego
         sku: product.sku || '',
         purchase_price: product.purchase_price ?? '',
         selling_price: product.selling_price ?? '',
-        gst_rate: product.gst_rate ?? '5',
+        gst_rate: (product.gst_rate !== undefined && product.gst_rate !== null) ? String(product.gst_rate) : defaultStoreGst,
         current_stock: product.current_stock ?? '0',
         low_stock_threshold: product.low_stock_threshold ?? '10'
       });
@@ -48,12 +64,12 @@ export function ProductModal({ isOpen, onClose, product, onSaved, existingCatego
         sku: '',
         purchase_price: '',
         selling_price: '',
-        gst_rate: '5',
+        gst_rate: defaultStoreGst,
         current_stock: '25',
         low_stock_threshold: '10'
       });
     }
-  }, [product, isOpen]);
+  }, [product, isOpen, defaultStoreGst]);
 
   // Auto-generate SKU recommendation if empty
   const handleAutoSku = () => {
