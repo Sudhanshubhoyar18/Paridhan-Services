@@ -13,6 +13,9 @@ console.log(`📌 Port: ${process.env.PORT || 5000}`);
 if (process.env.RENDER_EXTERNAL_URL) {
   console.log(`📌 Render External URL: ${process.env.RENDER_EXTERNAL_URL}`);
 }
+if (process.env.TURSO_DATABASE_URL) {
+  console.log(`📌 Turso Cloud Database: Active (${process.env.TURSO_DATABASE_URL.substring(0, 30)}...)`);
+}
 console.log('----------------------------------------------------');
 
 const [major, minor] = process.versions.node.split('.').map(Number);

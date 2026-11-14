@@ -29,5 +29,8 @@
     "whatsapp"
   ],
   "author": "Antigravity Senior Full-Stack Engineer",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@libsql/client": "^0.18.0"
+  }
 }

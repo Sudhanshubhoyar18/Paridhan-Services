@@ -8,6 +8,8 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 import { seedDatabase } from './database/seed.js';
+import { db } from './config/db.js';
+import { syncOnStartup } from './config/turso.js';
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import customerRoutes from './routes/customers.js';
@@ -33,6 +35,13 @@ try {
   console.log('✅ Database schema verified & seeded successfully');
 } catch (seedErr) {
   console.error('⚠️ Database seed error:', seedErr);
+}
+
+// Synchronize with Turso Cloud if credentials are provided
+try {
+  await syncOnStartup(db.raw);
+} catch (tursoErr) {
+  console.error('⚠️ Turso startup sync warning:', tursoErr.message);
 }
 
 // CORS configuration

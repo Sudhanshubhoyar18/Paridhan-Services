@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { syncWriteToTurso } from './turso.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,12 +40,22 @@ function normalizeArgs(args) {
   return args;
 }
 
-// Wrapper to provide 100% better-sqlite3 compatible API
+function isWriteQuery(sql) {
+  if (!sql || typeof sql !== 'string') return false;
+  const upper = sql.trim().toUpperCase();
+  return upper.startsWith('INSERT') || upper.startsWith('UPDATE') || upper.startsWith('DELETE') || upper.startsWith('REPLACE');
+}
+
+// Wrapper to provide 100% better-sqlite3 compatible API with Turso Cloud replication
 export const db = {
   raw: rawDb,
 
   exec(sql) {
-    return rawDb.exec(sql);
+    const res = rawDb.exec(sql);
+    if (isWriteQuery(sql)) {
+      syncWriteToTurso(sql, []);
+    }
+    return res;
   },
 
   pragma(sql) {
@@ -57,6 +68,9 @@ export const db = {
       run(...args) {
         const normalized = normalizeArgs(args);
         const res = stmt.run(...normalized);
+        if (isWriteQuery(sql)) {
+          syncWriteToTurso(sql, normalized);
+        }
         return {
           changes: res.changes,
           lastInsertRowid: Number(res.lastInsertRowid)
